@@ -1,0 +1,18 @@
+================================================================================
+                REPORTE DETALLADO DE EVALUACIÓN DEL SISTEMA RAG                 
+================================================================================
+
+Fecha: 2025-09-02 16:49:42
+Modelo de embedding: Transformer
+Métricas evaluadas: basic_evaluation
+
+-------------------------------RESUMEN EJECUTIVO--------------------------------
+
+------------------------------MÉTRICAS DETALLADAS-------------------------------
+
+BASIC_EVALUATION:
+  - Puntuación: N/A
+  - Descripción: Sin descripción
+  - Interpretación: Sin interpretación
+
+-----------------------------------CONCLUSIÓN-----------------------------------
