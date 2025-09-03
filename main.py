@@ -16,19 +16,18 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 from utils import load_and_process_pdf, create_vector_store, chunk_text_semantically
-from langchain_community.llms import LlamaCpp
+from langchain_openai import ChatOpenAI
 # Cargar variables de entorno desde el archivo .env
 load_dotenv()
 
 # ============================================
 # Configuración del Modelo de Lenguaje
 # ============================================
-MODEL_NAME = os.getenv('MODEL_NAME', 'llama-3.1-nemotron-nano-8b-v1')
+MODEL_NAME = os.getenv('MODEL_NAME', 'mistral-7b-instruct-v0.2')
 MODEL_PATH = os.getenv(
     'LOCAL_MODEL_PATH',
-    'C:\\Users\\ronal\\.cache\\lm-studio\\models\\unsloth\\' \
-    'Llama-3.1-Nemotron-Nano-8B-v1-GGUF\\' \
-    'Llama-3.1-Nemotron-Nano-8B-v1-Q4_K_S.gguf'
+    'C:\\Users\\ronal\\.cache\\lm-studio\\models\\jonahhenry\\mistral-7b-instruct-v0.2.Q4_K_M-GGUF\\' \
+    'mistral-7b-instruct-v0.2.Q4_K_M.gguf'
 )
 
 # ============================================
@@ -41,16 +40,16 @@ TOP_K_RETRIEVAL = int(os.getenv('TOP_K_RETRIEVAL', '5'))
 
 # Configuración del LLM
 LLM_TEMPERATURE = float(os.getenv('LLM_TEMPERATURE', '0.1'))
-MAX_TOKENS = int(os.getenv('MAX_TOKENS', '2048'))
+MAX_TOKENS = int(os.getenv('MAX_TOKENS', '512'))
 
 # Parámetros de rendimiento para LlamaCpp
-N_CTX = int(os.getenv('N_CTX', '16384'))
-N_GPU_LAYERS = int(os.getenv('N_GPU_LAYERS', '30'))
-N_BATCH = int(os.getenv('N_BATCH', '512'))
-N_THREADS = int(os.getenv('N_THREADS', '6'))  # Ajusta a tus núcleos físicos
+N_CTX = int(os.getenv('N_CTX', '2048'))
+N_GPU_LAYERS = int(os.getenv('N_GPU_LAYERS', '0'))
+N_BATCH = int(os.getenv('N_BATCH', '8'))
+N_THREADS = int(os.getenv('N_THREADS', '4'))  # Ajusta a tus núcleos físicos
 
 # Configuración de la evaluación
-EVAL_SAMPLES = int(os.getenv('EVAL_SAMPLES', '5'))  # Usar 0 para evaluar todos
+EVAL_SAMPLES = int(os.getenv('EVAL_SAMPLES', '2'))  # Usar 0 para evaluar todos
 
 # Modelo de embeddings
 EMBEDDING_MODEL = os.getenv(
@@ -78,6 +77,7 @@ class RAGSystem:
         """
         self.pdf_path = pdf_path
         self.model_path = MODEL_PATH
+        self.local_llm_url = os.getenv('LOCAL_LLM_URL')
         self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
         self.vector_store = None
         self.text_chunks = []
@@ -85,23 +85,48 @@ class RAGSystem:
         
         # Plantilla de prompt para el LLM
         self.prompt_template = """
-You are an expert assistant on the book "An Introduction to Statistical Learning with Applications in Python".
-Answer the user’s question based ONLY on the context provided below.
+[INST]
+You are a highly specialized assistant for the book "An Introduction to Statistical Learning with Applications in Python". Your task is to answer questions strictly based on the provided context. Follow these steps and rules meticulously.
 
-IMPORTANT RULES:
-1. If the answer is not in the context, reply: "The information is not available in the provided context"
-2. Keep your answers concise and precise
-3. Always cite sources using the provided metadata
-4. Do not make up any information that is not explicitly stated in the context
+**Step-by-Step Instructions:**
+1.  Carefully read the user's question and the entire context provided.
+2.  Identify the specific parts of the context that directly answer the question.
+3.  Synthesize the information from the relevant context into a concise and precise answer.
+4.  For each piece of information you use, you MUST cite the source page number at the end of the sentence, like this: `(p. 45)`. The context provides the page number for each source.
+5.  If the context does not contain the information needed to answer the question, you MUST respond with exactly this phrase: "The information is not available in the provided context."
 
-Context:
+**Crucial Rules:**
+- DO NOT use any information outside of the provided context.
+- DO NOT make assumptions or infer information not explicitly stated.
+- Combine information from multiple sources if necessary, citing each one.
+
+**Example:**
+
+**Context:**
+---
+[Source: Page 25]
+Linear regression is a statistical method for modeling the relationship between a dependent variable and one or more independent variables. It assumes a linear relationship.
+
+[Source: Page 88]
+Logistic regression is used for binary classification problems. Unlike linear regression, it models the probability of an outcome.
+---
+
+**Question:** What is the difference between linear and logistic regression?
+
+**Answer:**
+Linear regression models the relationship between a dependent variable and independent variables, assuming a linear relationship (p. 25). In contrast, logistic regression is used for binary classification and models the probability of an outcome (p. 88).
+[/INST]
+
+**Task:**
+
+**Context:**
 ---
 {context}
 ---
 
-Question: {question}
+**Question:** {question}
 
-Answer:
+**Answer:**
 """
 
     def setup_system(self):
@@ -123,20 +148,15 @@ Answer:
         print("4. Creando vector store con FAISS...")
         self.vector_store = create_vector_store(self.text_chunks, self.embedding_model)
         
-        print(f"5. Cargando modelo LLM desde: {self.model_path}")
-        if not self.model_path or not os.path.exists(self.model_path):
-            raise FileNotFoundError(f"No se encontró el archivo del modelo en: {self.model_path}")
+        print(f"5. Conectando al servidor LLM en: {self.local_llm_url}")
 
-        # Inicializar el modelo local
-        self.llm = LlamaCpp(
-            model_path=self.model_path,
-            n_gpu_layers=N_GPU_LAYERS,  # Usar todas las capas en GPU si está disponible
-            n_batch=N_BATCH,
-            n_ctx=N_CTX,  # Tamaño de contexto fijo
-            n_threads=N_THREADS,
-            max_tokens=MAX_TOKENS,
+        # Inicializar el cliente para el modelo local
+        self.llm = ChatOpenAI(
+            openai_api_base=self.local_llm_url,
+            openai_api_key="not-needed",
+            model_name=MODEL_NAME,
             temperature=LLM_TEMPERATURE,
-            verbose=True  # Mostrar información de carga
+            max_tokens=MAX_TOKENS
         )
         
         print("\nSistema RAG configurado y listo para recibir consultas.")
@@ -194,7 +214,8 @@ Answer:
         sources_used = []
         
         for chunk in relevant_chunks:
-            context_parts.append(f"[Fuente: {chunk['metadata']['source']}]\n{chunk['text']}")
+            page_number = chunk['metadata'].get('page_number', 'N/A')
+            context_parts.append(f"[Source: Page {page_number}]\n{chunk['text']}")
             sources_used.append({
                 'source': chunk['metadata']['source'],
                 'page': chunk['metadata'].get('page_number', 'N/A'),
@@ -213,7 +234,7 @@ Answer:
         # Generar respuesta usando el modelo local
         try:
             response = self.llm.invoke(formatted_prompt)
-            answer = response.strip()
+            answer = response.content.strip()
         except Exception as e:
             answer = f"Error al generar la respuesta: {str(e)}"
         
@@ -221,7 +242,8 @@ Answer:
             'query': query,
             'answer': answer,
             'sources_used': sources_used,
-            'context_retrieved': context
+            'context_retrieved': context,
+            'retrieved_chunks': relevant_chunks
         }
 
     def interactive_chat(self):

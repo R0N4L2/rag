@@ -1,0 +1,74 @@
+[
+    {
+        "question": "What is the main difference between supervised and unsupervised learning?",
+        "ground_truth": "In supervised statistical learning, we build a statistical model to predict or estimate an output based on one or more inputs; this requires predictor measurements and an associated response measurement. In contrast, unsupervised learning describes the situation in which we observe a vector of measurements but no associated response; the goal is to learn relationships and structure from such data."
+    },
+    {
+        "question": "What is the difference between a regression and a classification problem?",
+        "ground_truth": "Problems with a quantitative response are known as regression problems, while those involving a qualitative (or categorical) response are often referred to as classification problems."
+    },
+    {
+        "question": "What are the two main reasons for estimating the function f in statistical learning?",
+        "ground_truth": "There are two main reasons we might wish to estimate the function f: prediction and inference. Prediction focuses on generating accurate outputs for new inputs, often treating the model as a 'black box'. Inference focuses on understanding the relationship between the predictors and the response, such as which predictors are associated with the response and the nature of that relationship."
+    },
+    {
+        "question": "What are reducible and irreducible error?",
+        "ground_truth": "The accuracy of a prediction depends on two quantities: reducible error and irreducible error. Reducible error stems from the inaccuracy in estimating the function f and can be improved by using the most appropriate statistical learning technique. Irreducible error comes from the variability associated with the error term ε, which, by definition, cannot be predicted using the inputs. This error cannot be reduced no matter how well we estimate f."
+    },
+    {
+        "question": "What is the difference between parametric and non-parametric methods?",
+        "ground_truth": "Parametric methods involve a two-step approach: first, an assumption is made about the functional form of f (like a linear model), and second, the training data is used to fit or train the model. Non-parametric methods do not make explicit assumptions about the functional form of f, instead seeking an estimate that gets as close as possible to the data points without being too rough or wiggly."
+    },
+    {
+        "question": "What is overfitting?",
+        "ground_truth": "Overfitting occurs when a given method yields a small training MSE but a large test MSE. This happens because our statistical learning procedure is working too hard to find patterns in the training data and may be picking up patterns that are just caused by random chance rather than by true properties of the unknown function f."
+    },
+    {
+        "question": "What is the bias-variance trade-off?",
+        "ground_truth": "The bias-variance trade-off is the result of two competing properties of statistical learning methods. Variance refers to the amount by which the estimate of f would change if we estimated it using a different training data set. Bias refers to the error that is introduced by approximating a real-life problem with a much simpler model. As we use more flexible methods, the variance will increase and the bias will decrease. Minimizing the expected test error requires selecting a method that simultaneously achieves low variance and low bias."
+    },
+    {
+        "question": "How does the K-Nearest Neighbors (KNN) classifier work?",
+        "ground_truth": "Given a positive integer K and a test observation x₀, the KNN classifier first identifies the K points in the training data that are closest to x₀, represented by N₀. It then estimates the conditional probability for class j as the fraction of points in N₀ whose response values equal j. Finally, KNN classifies the test observation x₀ to the class with the largest probability."
+    },
+    {
+        "question": "Why is linear regression not appropriate for a qualitative response?",
+        "ground_truth": "For a qualitative response variable with more than two levels, a numerical coding (e.g., 1, 2, 3) imposes an ordering and distance between classes that does not naturally exist, leading to fundamentally different models depending on the coding. For a binary (two-level) response, while possible, linear regression can produce probability estimates outside the [0, 1] interval."
+    },
+    {
+        "question": "How does k-fold cross-validation work?",
+        "ground_truth": "The k-fold cross-validation approach involves randomly dividing the set of observations into k groups, or folds, of approximately equal size. The first fold is treated as a validation set, and the method is fit on the remaining k-1 folds. The mean squared error is then computed on the observations in the held-out fold. This procedure is repeated k times, with a different group of observations treated as a validation set each time. The k-fold CV estimate is computed by averaging these k values."
+    },
+    {
+        "question": "What is the bootstrap and what is it used for?",
+        "ground_truth": "The bootstrap is a statistical tool that can be used to quantify the uncertainty associated with a given estimator or statistical learning method. Instead of obtaining independent data sets from the population, it obtains distinct data sets by repeatedly sampling observations from the original data set with replacement."
+    },
+    {
+        "question": "What is the difference between ridge regression and lasso regression?",
+        "ground_truth": "Both ridge and lasso regression are shrinkage methods. Ridge regression uses an ℓ₂ penalty (λΣβ²) that shrinks coefficients towards zero but will not set any of them exactly to zero. Lasso regression uses an ℓ₁ penalty (λΣ|β|) which has the effect of forcing some of the coefficient estimates to be exactly equal to zero when the tuning parameter λ is sufficiently large, thereby performing variable selection."
+    },
+    {
+        "question": "How does Principal Components Regression (PCR) work?",
+        "ground_truth": "Principal Components Regression (PCR) is a dimension reduction method that involves constructing the first M principal components, Z₁,...,Z_M, and then using these components as the predictors in a linear regression model that is fit using least squares. The idea is that often a small number of principal components suffice to explain most of the variability in the data as well as the relationship with the response."
+    },
+    {
+        "question": "What is a Convolutional Neural Network (CNN) and what is it used for?",
+        "ground_truth": "A Convolutional Neural Network (CNN) is a specialized family of neural networks that has shown spectacular success on image classification. CNNs mimic how humans classify images by recognizing specific features or patterns anywhere in the image. They use specialized layers called convolution layers and pooling layers to build up a hierarchy of features, from low-level ones (like edges) to high-level ones (like eyes or ears)."
+    },
+    {
+        "question": "What is a Recurrent Neural Network (RNN) and when is it useful?",
+        "ground_truth": "A Recurrent Neural Network (RNN) is designed for sequential data, such as documents, time series, or recorded speech. RNNs process the input sequence one element at a time, updating activations in a hidden layer that accumulates a history of what has been seen before. This structure allows them to leverage the sequential nature of the input object for tasks like topic classification, sentiment analysis, or language translation."
+    },
+    {
+        "question": "What is bagging and how does it improve decision trees?",
+        "ground_truth": "Bagging, or bootstrap aggregation, is a general-purpose procedure for reducing the variance of a statistical learning method. For decision trees, which suffer from high variance, bagging constructs B regression trees using B bootstrapped training data sets and then averages the resulting predictions. Each tree is grown deep and is not pruned, resulting in low bias but high variance; averaging these B trees reduces the variance and improves accuracy."
+    },
+    {
+        "question": "How does a random forest improve upon bagged trees?",
+        "ground_truth": "Random forests improve over bagged trees through a tweak that decorrelates the trees. When building the trees, each time a split is considered, a random sample of m predictors is chosen as split candidates from the full set of p predictors (typically m ≈ √p). This prevents a single very strong predictor from dominating the splits in all the trees, thereby decorrelating the trees and making the average of the resulting trees less variable and more reliable."
+    },
+    {
+        "question": "What is the main difference between bagging and boosting?",
+        "ground_truth": "In bagging, each tree is built on a bootstrap data set, independent of the other trees. In boosting, the trees are grown sequentially: each tree is fit using information from previously grown trees, specifically on a modified version of the original data, such as the residuals from the current model. Boosting does not involve bootstrap sampling."
+    }
+]

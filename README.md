@@ -1,10 +1,16 @@
-# 📚 Sistema RAG para Control de Calidad del Conocimiento Interno
+# 🧠✨ Sistema RAG Avanzado: Tu Experto en Aprendizaje Estadístico
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Python-3.8%2B-blue" alt="Python 3.8+">
-  <img src="https://img.shields.io/badge/Framework-LangChain-yellow" alt="LangChain">
-  <img src="https://img.shields.io/badge/Vector%20Store-FAISS-ff69b4" alt="FAISS">
-  <img src="https://img.shields.io/badge/LLM-llama--3.1--nemotron--nano--8b--v1-orange" alt="LLM Model">
+  <img src="https://img.shields.io/badge/Python-3.10.18-306998?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10.18">
+  <img src="https://img.shields.io/badge/LangChain-0.1.20-FF6B6B?style=for-the-badge&logo=python&logoColor=white" alt="LangChain">
+  <img src="https://img.shields.io/badge/FAISS-Vector%20Store-00C4CC?style=for-the-badge&logo=facebook&logoColor=white" alt="FAISS">
+  <img src="https://img.shields.io/badge/LLM-Llama--3.1-FF9900?style=for-the-badge&logo=llama&logoColor=white" alt="LLM Model">
+  <img src="https://img.shields.io/badge/GPU-Accelerated-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="GPU Accelerated">
+</div>
+
+<div align="center">
+  <h3>🚀 Transforma documentos en conocimiento accionable con IA</h3>
+  <p>Una solución todo-en-uno para extraer, procesar y generar conocimiento a partir de documentos técnicos</p>
 </div>
 
 👨‍💻 **Autor**: Ronald Castillo Capino  
@@ -12,14 +18,68 @@
 
 > 💡 Este proyecto implementa un sistema avanzado de Preguntas y Respuestas (Q&A) que combina recuperación de información con generación de lenguaje natural, garantizando respuestas precisas, verificables y basadas en documentos específicos.
 
-## 🚀 Descripción del Proyecto
+## 🐍 Compatibilidad con Python 3.10.18
 
-Este sistema **RAG (Retrieval-Augmented Generation)** está diseñado para proporcionar respuestas precisas y contextualizadas mediante la combinación de:
+Este proyecto está desarrollado y probado específicamente con Python 3.10.18. La elección de esta versión se debe a:
 
-- 🔍 **Recuperación de información** avanzada de documentos técnicos
-- 🧠 **Generación de respuestas** utilizando el modelo local `Llama-3.1-Nemotron-Nano-4B-v1.1` con aceleración por GPU
-- 📊 **Evaluación automática** de la calidad con métricas RAGAS
-- 🚀 **Aceleración por GPU** para un rendimiento óptimo en inferencia local
+- 🚀 **Rendimiento optimizado** para operaciones de procesamiento de lenguaje natural
+- 🔒 **Estabilidad** en el ecosistema de IA/ML
+- 📦 **Compatibilidad** con bibliotecas clave como PyTorch y Transformers
+
+### Verifica tu versión de Python
+
+```bash
+# Verificar versión instalada
+python --version
+# Deberías ver: Python 3.10.18
+
+# O alternativamente
+python -c "import sys; print(f'Python {sys.version}')"
+```
+
+### Configuración recomendada para entornos virtuales
+
+```bash
+# Crear entorno virtual con Python 3.10.18
+py -3.10 -m venv venv  # Windows
+# o
+python3.10 -m venv venv  # Linux/Mac
+
+# Activar el entorno
+.\venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/Mac
+```
+
+## 🌟 ¿Qué hace este proyecto?
+
+Imagina tener un asistente experto que puede leer y entender documentos técnicos complejos, y responder a tus preguntas con precisión. ¡Eso es exactamente lo que ofrece este sistema!
+
+### 🎯 Características principales
+
+| Característica | Descripción | Beneficio |
+|----------------|-------------|-----------|
+| 🔍 **Búsqueda Semántica** | Entiende el significado detrás de las palabras | Encuentra información relevante incluso con términos diferentes |
+| 🧠 **Generación Contextual** | Responde usando el modelo Llama-3.1 | Respuestas naturales y precisas con citas a las fuentes |
+| 📊 **Autoevaluación** | Mide la calidad con métricas RAGAS | Confianza en la precisión de las respuestas |
+| ⚡ **Rendimiento Óptimo** | Optimizado para GPU NVIDIA | Respuestas rápidas incluso con documentos extensos |
+
+### 🎓 Casos de Uso
+
+- 📚 **Estudiantes**: Entiende conceptos complejos de aprendizaje estadístico
+- 👨‍💻 **Desarrolladores**: Integra conocimiento técnico en tus aplicaciones
+- 🔬 **Investigadores**: Analiza y extrae información de papers académicos
+- 🏢 **Empresas**: Crea una base de conocimiento interna accesible
+
+### 🏗️ Cómo funciona
+
+```mermaid
+flowchart LR
+    A[📄 Documento PDF] --> B[🔍 Procesamiento]
+    B --> C[📚 Base de Conocimiento]
+    D[❓ Pregunta] --> E[🧠 Modelo RAG]
+    C --> E
+    E --> F[💡 Respuesta con Fuentes]
+```
 
 💡 **Caso de Uso Principal**: Sistema experto de preguntas y respuestas sobre el libro "An Introduction to Statistical Learning with Applications in Python", permitiendo a los usuarios obtener explicaciones claras y precisas sobre conceptos de aprendizaje estadístico.
 
@@ -98,6 +158,74 @@ Desarrollar un asistente de IA que:
 ✅ Mantenga la trazabilidad de las fuentes de información  
 ✅ Evalúe automáticamente la calidad de las respuestas  
 ✅ Sea fácil de implementar y mantener
+
+## 📂 Estructura del Código
+
+El proyecto está organizado en los siguientes archivos principales:
+
+### 1. `main.py`
+Módulo principal que implementa el sistema RAG con las siguientes características:
+
+- **Clase Principal**: `RAGSystem`
+  - Procesa documentos PDF y crea un índice de búsqueda semántica
+  - Implementa búsqueda vectorial usando FAISS
+  - Genera respuestas utilizando un modelo de lenguaje local
+
+- **Configuración**:
+  ```python
+  # Modelo por defecto
+  MODEL_NAME = 'mistral-7b-instruct-v0.2'
+  
+  # Configuración de fragmentación
+  CHUNK_SIZE = 4000  # Tamaño de fragmentos de texto
+  CHUNK_OVERLAP = 200  # Solapamiento entre fragmentos
+  TOP_K_RETRIEVAL = 5  # Número de fragmentos a recuperar
+  
+  # Configuración del modelo de lenguaje
+  LLM_TEMPERATURE = 0.1
+  MAX_TOKENS = 512
+  ```
+
+### 2. `evaluate.py`
+Módulo para evaluar el rendimiento del sistema RAG con las siguientes características:
+
+- **Funcionalidades**:
+  - Carga preguntas y respuestas de referencia desde `faq.json`
+  - Implementa evaluación con RAGAS (Retrieval-Augmented Generation Assessment)
+  - Soporta modelos locales para embeddings y generación
+  - Genera reportes detallados de evaluación
+
+- **Métricas implementadas**:
+  - `Faithfulness`: Mide qué tan fiel es la respuesta al contexto proporcionado
+  - `Answer Relevancy`: Evalúa la relevancia de la respuesta respecto a la pregunta
+  - `Context Precision`: Mide la precisión del contexto recuperado
+  - `Context Recall`: Evalúa qué tan bien se recupera la información relevante
+
+- **Configuración**:
+  ```python
+  # Configuración de evaluación
+  EVAL_SAMPLES = 2  # Número de ejemplos a evaluar
+  LLM_TEMPERATURE = 0.1  # Controla la aleatoriedad de las respuestas
+  MAX_TOKENS = 512  # Máximo número de tokens por respuesta
+  
+  # Configuración de modelos locales
+  LOCAL_LLM_URL = "http://localhost:1234/v1"  # Endpoint del modelo local
+  EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+  ```
+
+### 3. `utils.py`
+Módulo de utilidades para el procesamiento de texto y gestión de vectores:
+
+- **Funciones principales**:
+  - `load_and_process_pdf()`: Extrae y procesa texto de archivos PDF
+  - `chunk_text_semantically()`: Divide el texto en fragmentos significativos con solapamiento
+  - `create_vector_store()`: Crea y gestiona el almacén vectorial FAISS
+
+- **Características**:
+  - Soporte para múltiples formatos de documentos
+  - Tokenización inteligente que preserva la estructura semántica
+  - Integración con modelos de embeddings de Hugging Face
+  - Gestión eficiente de memoria para documentos grandes
 
 ## 🏗️ Arquitectura del Sistema
 
@@ -185,28 +313,314 @@ graph TD
    - La consulta se normaliza y procesa
 
 2. **Búsqueda Semántica**
-   - La consulta se convierte en embedding
-   - Se buscan los fragmentos más similares en FAISS
+   - La consulta se convierte en embedding usando `sentence-transformers/all-MiniLM-L6-v2`
+   - Se buscan los fragmentos más similares en el índice FAISS
    - Se recuperan los 5 fragmentos más relevantes
 
 3. **Generación de Respuesta**
-   - Los fragmentos recuperados se combinan con el prompt
-   - El modelo de lenguaje genera una respuesta contextualizada
-   - Se aplican filtros de seguridad y calidad
+   - Los fragmentos recuperados se combinan con un prompt estructurado
+   - El modelo de lenguaje local (por defecto Mistral 7B) genera una respuesta contextualizada
+   - Se incluyen referencias a las páginas del documento original
 
-4. **Retroalimentación y Mejora**
-   - La interacción se registra para evaluación
-   - Las métricas se calculan y almacenan
-   - El sistema se ajusta según el rendimiento
+4. **Evaluación de Calidad**
+   - El sistema calcula métricas de evaluación automática
+   - Se genera un reporte detallado del rendimiento
+   - Las interacciones se registran para análisis posterior
 
-## ⚙️ Configuración del Entorno
+## 🚀 Comenzando en 3, 2, 1...
 
-El archivo `.env` contiene las siguientes configuraciones clave:
+### 📥 Requisitos Previos
+
+- Python 3.10.18 ([Descargar](https://www.python.org/downloads/release/python-31018/))
+- Git
+- CUDA Toolkit (para aceleración GPU)
+- pip (gestor de paquetes de Python)
+
+### ⚙️ Configuración del Entorno (.env)
+
+El archivo `.env` es fundamental para el funcionamiento del sistema. A continuación se detallan todas las configuraciones disponibles:
+
+### Configuración Básica
+```ini
+# ===== Configuración del Servidor Local =====
+LOCAL_LLM_URL=http://192.168.100.5:1234/v1  # URL del servidor LM Studio
+MODEL_NAME=mistral-7b-instruct-v0.2          # Nombre del modelo a utilizar
+```
+
+### Rutas de Archivos
+```ini
+# Ruta al modelo GGUF (descargado automáticamente si no existe)
+LOCAL_MODEL_PATH="C:\\Users\\ronal\\.cache\\lm-studio\\models\\jonahhenry\\mistral-7b-instruct-v0.2.Q4_K_M-GGUF\\mistral-7b-instruct-v0.2.Q4_K_M.gguf"
+PDF_PATH=data/PDF-GenAI-Challenge.pdf  # Ruta al documento PDF de entrada
+CACHE_DIR=./cache                     # Directorio para caché
+```
+
+### Configuración del Modelo
+```ini
+# ===== Configuración de Generación =====
+LLM_TEMPERATURE=0.1      # Controla la creatividad (0-1, más bajo = más determinista)
+TOP_P=0.9                # Muestreo de núcleo (nucleus sampling)
+MAX_TOKENS=128           # Longitud máxima de las respuestas
+FREQUENCY_PENALTY=0.0    # Penalización por repetición de tokens
+PRESENCE_PENALTY=0.6     # Penalización por repetición de temas
+```
+
+### Rendimiento y Recursos
+```ini
+# ===== Configuración de Rendimiento =====
+N_CTX=2048               # Tamaño del contexto
+N_BATCH=1                # Tamaño del lote para inferencia
+N_GPU_LAYERS=0           # Capas a ejecutar en GPU (0 = CPU, 99 = todas en GPU)
+N_THREADS=4              # Hilos de CPU a utilizar
+```
+
+### Procesamiento de Documentos
+```ini
+# ===== Configuración de Fragmentación =====
+CHUNK_SIZE=4000          # Tamaño de los fragmentos de texto
+CHUNK_OVERLAP=200        # Solapamiento entre fragmentos
+TOP_K_RETRIEVAL=5        # Número de fragmentos a recuperar
+SIMILARITY_THRESHOLD=0.7 # Umbral de similitud mínimo
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+```
+
+### Evaluación
+```ini
+# ===== Configuración de Evaluación =====
+EVAL_SAMPLES=0           # Número de ejemplos a evaluar (0 = todos)
+EVALUATION_INPUT_PATH=evaluate/faq.json
+EVALUATION_OUTPUT_PATH=evaluate/evaluation_report.txt
+```
+
+### Registro (Logging)
+```ini
+# ===== Configuración de Logs =====
+LOG_LEVEL=INFO           # Nivel de detalle del registro
+LOG_FILE=rag_system.log  # Archivo de registro
+
+# Configuración de entorno
+GIT_PYTHON_REFRESH=quiet
+TRANSFORMERS_OFFLINE=1   # Modo offline para transformers
+RAGAS_DO_NOT_TRACK=true  # Deshabilitar telemetría de RAGAS
+```
+
+## ⚙️ Instalación Paso a Paso
+
+```bash
+# 1. Clona el repositorio
+🐚 git clone https://github.com/tu-usuario/tu-proyecto.git
+📂 cd tu-proyecto
+
+# 2. Crea y activa el entorno virtual
+🐍 python -m venv venv
+# En Windows:
+🔌 .\venv\Scripts\activate
+# En Linux/Mac:
+# 🔌 source venv/bin/activate
+
+# 3. Instala las dependencias
+📦 pip install --upgrade pip
+📦 pip install -r requirements.txt
+
+# 4. Configura las variables de entorno
+🔧 copy .env.example .env  # Windows
+# En Linux/Mac:
+# 🔧 cp .env.example .env
+
+# 5. Edita el archivo .env con tus configuraciones
+⚙️ notepad .env  # O usa tu editor favorito
+```
+
+### 🎮 Uso Básico
+
+```python
+# 📂 main.py
+from __future__ import annotations  # Para mejor compatibilidad de tipos
+import os
+import sys
+from pathlib import Path
+from typing import Dict, Any
+
+# Verificar versión de Python
+if sys.version_info < (3, 10):
+    raise RuntimeError("Se requiere Python 3.10.18 o superior")
+
+# Configuración de rutas
+PROJECT_ROOT = Path(__file__).parent
+sys.path.append(str(PROJECT_ROOT))
+
+# Cargar variables de entorno
+from dotenv import load_dotenv
+load_dotenv()
+
+# Importaciones locales
+from main import RAGSystem
+
+# Cargar variables de entorno
+load_dotenv()
+
+# 🏗️ Inicializa el sistema con tu documento
+print("🚀 Inicializando el sistema RAG...")
+rag = RAGSystem("documentos/libro_estadistica.pdf")
+rag.setup_system()  # ⏳ Esto puede tomar unos minutos la primera vez
+
+# ❓ Ejemplo de pregunta
+pregunta = "¿Cómo funciona la regresión logística?"
+print(f"\n🔍 Procesando pregunta: {pregunta}")
+
+# 🎯 Generar respuesta
+respuesta = rag.generate_response(
+    pregunta,
+    temperature=0.1,  # Controla la creatividad (0-1)
+    max_tokens=512    # Longitud máxima de la respuesta
+)
+
+# ✨ Mostrar resultados
+print("\n" + "="*80)
+print(f"🔍 Pregunta: {pregunta}")
+print("-"*80)
+print(f"💡 Respuesta: {respuesta['answer']}")
+print("-"*80)
+print(f"📚 Fuentes: {', '.join(respuesta['sources'])}")
+print(f"🎯 Confianza: {respuesta['confidence']:.1%}")
+print("="*80 + "\n")
+```
+
+### 🎯 Ejemplos Prácticos con Tipado Estático
+
+#### 1. Búsqueda de Conceptos con Tipado
+```python
+def obtener_explicacion(rag: RAGSystem, concepto: str, temp: float = 0.7) -> Dict[str, Any]:
+    """Obtiene una explicación detallada de un concepto estadístico.
+    
+    Args:
+        rag: Instancia de RAGSystem
+        concepto: Término o concepto a explicar
+        temp: Temperatura para la generación (0-1)
+        
+    Returns:
+        Dict con la respuesta y metadatos
+    """
+    respuesta = rag.generate_response(
+        f"Explica el concepto de {concepto} con un ejemplo práctico",
+        temperature=min(max(temp, 0), 1),  # Asegurar valor entre 0 y 1
+        max_tokens=512
+    )
+    return respuesta
+
+# Uso
+explicacion = obtener_explicacion(rag, "teorema de Bayes", temp=0.7)
+print(f"📝 {explicacion['answer']}")
+print(f"📊 Confianza: {explicacion['confidence']:.1%}")
+```
+
+#### 2. Comparación de Algoritmos
+```python
+respuesta = rag.generate_response(
+    "Compara los árboles de decisión con los bosques aleatorios",
+    max_tokens=1000  # Límite de longitud
+)
+```
+
+#### 3. Generación de Ejemplos de Código
+```python
+respuesta = rag.generate_response(
+    "Muestra un ejemplo de implementación de regresión lineal en Python",
+    include_code=True
+)
+```
+
+### 2. Evaluación del Rendimiento
+```python
+from evaluate import run_ragas_evaluation, create_evaluation_dataset
+from datasets import Dataset
+
+# Cargar datos de evaluación
+eval_data = create_evaluation_dataset()
+
+# Ejecutar evaluación
+results = run_ragas_evaluation(eval_data)
+
+# Mostrar resultados
+print("\n=== Resultados de la Evaluación ===")
+for metric, score in results.items():
+    print(f"{metric}: {score:.4f}")
+```
+
+### 3. Configuración Avanzada
+```python
+# Personalizar la evaluación
+os.environ["RAGAS_EMBEDDINGS"] = "huggingface"
+os.environ["RAGAS_DO_NOT_TRACK"] = "true"
+
+# Usar un modelo local diferente
+os.environ["LOCAL_LLM_URL"] = "http://localhost:1234/v1"
+
+# Configurar el nivel de detalle del logging
+import logging
+logging.basicConfig(level=logging.INFO)
+```
+
+## ⚙️ Configuración Avanzada
+
+### 🔧 Variables de Entorno Clave
+
+Crea un archivo `.env` en la raíz del proyecto con estas configuraciones:
 
 ```ini
-# Configuración del Modelo
+# 🎯 Configuración del Modelo
 MODEL_NAME=llama-3.1-nemotron-nano-8b-v1
-LOCAL_MODEL_PATH=ruta/al/modelo.gguf
+LOCAL_MODEL_PATH=modelos/llama-3.1.gguf  # Ruta a tu modelo
+
+# ⚡ Rendimiento
+GPU_LAYERS=30  # Capas a cargar en GPU (ajustar según VRAM)
+BATCH_SIZE=512  # Tamaño de lote para inferencia
+THREADS=8      # Hilos de CPU para procesamiento
+
+# 🔍 Búsqueda
+TOP_K_RESULTS=5       # Número de fragmentos a recuperar
+SIMILARITY_THRESHOLD=0.7  # Umbral de similitud mínimo
+
+# 📊 Evaluación
+EVALUATION_SAMPLES=10  # Número de ejemplos para evaluación
+EVAL_TEMPERATURE=0.1   # Temperatura para generación en evaluación
+```
+
+### 🛠️ Personalización Avanzada
+
+#### 1. Ajuste de Parámetros del Modelo
+```python
+# 📂 main.py
+rag = RAGSystem(
+    "documento.pdf",
+    model_params={
+        'temperature': 0.3,  # Controla la creatividad (0-1)
+        'max_tokens': 1024,  # Longitud máxima de respuesta
+        'top_p': 0.9,       # Muestreo de núcleo
+        'repeat_penalty': 1.1  # Penalización por repetición
+    }
+)
+```
+
+#### 2. Personalización del Prompt
+Puedes modificar el prompt del sistema para adaptarlo a tus necesidades:
+
+```python
+# 📂 prompts/custom_prompt.txt
+Eres un experto en aprendizaje estadístico. Responde de manera clara y concisa.
+
+Contexto:
+{context}
+
+Pregunta: {question}
+
+Respuesta (incluye las páginas de referencia [p.XX]):
+```
+
+Luego cárgalo así:
+```python
+rag = RAGSystem("documento.pdf", prompt_file="prompts/custom_prompt.txt")
+```
 
 # Configuración de Rendimiento
 N_CTX=16384
@@ -654,7 +1068,7 @@ jobs:
         path: evaluate/
 ```
 
-## 🚨 Solución de Problemas Comunes
+## 🚨 Solución de Problemas
 
 ### 1. Problemas de Inicio
 
@@ -663,7 +1077,7 @@ jobs:
 [ERROR] No se pudo cargar el modelo: ConnectionError
 ```
 **Solución**:
-1. Verifica que el servidor de LM Studio esté en ejecución
+1. Verifica que LM Studio esté ejecutándose y que la URL en `.env` sea correcta
 2. Confirma la URL en el archivo `.env`
 3. Revisa los logs para mensajes adicionales
 
@@ -693,7 +1107,7 @@ export CUDA_VISIBLE_DEVICES=0  # Usar solo la primera GPU
 1. Verifica que CUDA esté correctamente instalado:
    ```bash
    nvidia-smi  # Debe mostrar el uso de GPU
-   python -c "import torch; print(f'CUDA disponible: {torch.cuda.is_available()}')
+   python -c "import torch; print(f'CUDA disponible: {torch.cuda.is_available()}'
    ```
 2. Ajusta el tamaño de lote para mejor uso de GPU:
    ```python
@@ -777,6 +1191,7 @@ export CUDA_VISIBLE_DEVICES=0  # Usar solo la primera GPU
    - Compartir fragmentos de documentos
    - Anotaciones colaborativas
    - Sistema de revisión por pares
+
 ## 🤝 Contribuciones
 
 ¡Las contribuciones son bienvenidas! Por favor, lee nuestra [guía de contribución](CONTRIBUTING.md) para más detalles.
