@@ -1,9 +1,18 @@
 """
-Sistema RAG para Control de Calidad del Conocimiento Interno
-Archivo: utils.py
-Nombre: Ronald Castillo Capino
+Módulo de Utilidades para el Sistema RAG
+
+Este módulo contiene funciones auxiliares para el procesamiento de documentos PDF,
+la creación de fragmentos semánticos y la gestión del almacenamiento vectorial
+utilizado por el sistema de Recuperación Aumentada por Generación (RAG).
+
+Incluye funcionalidades para:
+- Extracción y limpieza de texto de archivos PDF
+- Fragmentación semántica de documentos
+- Creación y gestión de índices vectoriales FAISS
+- Procesamiento de metadatos y gestión de referencias
+
+Autor: Ronald Castillo Capino
 Email: ron.h.castillo@gmail.com
-Descripción: Funciones utilitarias para procesamiento de documentos y vector store
 """
 
 import re
@@ -15,13 +24,25 @@ from sentence_transformers import SentenceTransformer
 
 def clean_text(text: str) -> str:
     """
-    Limpia el texto extraído del PDF eliminando artefactos de formato
+    Limpia y normaliza el texto extraído de un PDF.
+    
+    Realiza las siguientes operaciones de limpieza:
+    1. Elimina múltiples espacios en blanco consecutivos
+    2. Elimina caracteres especiales problemáticos
+    3. Filtra líneas muy cortas (posibles encabezados/pies de página)
     
     Args:
-        text (str): Texto crudo extraído del PDF
+        text (str): Texto crudo extraído del PDF, que puede contener
+                   artefactos de formato, espacios excesivos, etc.
         
     Returns:
-        str: Texto limpio
+        str: Texto limpio y normalizado, listo para su procesamiento posterior.
+             Conserva puntuación básica y estructura de párrafos.
+             
+    Example:
+        >>> text = "  Hola   mundo!  \n  Página 1  \n\n"
+        >>> clean_text(text)
+        'Hola mundo! Página 1'
     """
     # Eliminar múltiples espacios en blanco
     text = re.sub(r'\s+', ' ', text)
@@ -37,13 +58,34 @@ def clean_text(text: str) -> str:
 
 def extract_text_from_pdf(pdf_path: str) -> Tuple[str, List[Dict]]:
     """
-    Extrae texto y metadatos de un archivo PDF
+    Extrae texto estructurado y metadatos de un archivo PDF.
+    
+    Procesa cada página del documento PDF conservando información de:
+    - Número de página
+    - Posición del texto en el documento
+    - Metadatos básicos del documento
     
     Args:
-        pdf_path (str): Ruta al archivo PDF
+        pdf_path (str): Ruta absoluta o relativa al archivo PDF a procesar.
+                       Debe ser un archivo PDF válido y accesible.
         
     Returns:
-        Tuple[str, List[Dict]]: Texto extraído y lista de metadatos por página
+        Tuple[str, List[Dict]]: 
+            - Texto completo concatenado
+            - Lista de diccionarios con metadatos por página:
+                - page_num: Número de página (1-indexado)
+                - start_pos: Posición de inicio en el texto completo
+                - end_pos: Posición final en el texto completo
+                - section: Título de sección (si se detecta)
+                
+    Raises:
+        FileNotFoundError: Si el archivo PDF no existe o no es accesible
+        PyPDF2.PdfReadError: Si el archivo no es un PDF válido o está corrupto
+        
+    Note:
+        Esta función utiliza PyPDF2 para la extracción de texto, que puede no
+        manejar perfectamente todos los formatos de PDF. Para documentos complejos,
+        considere usar herramientas adicionales como pdfplumber o pdfminer.
     """
     full_text = ""
     page_metadata = []
@@ -318,7 +360,11 @@ def save_system_state(rag_system, save_path: str = "rag_system_state.json"):
     
     print(f"Estado del sistema guardado en {save_path}")
 
-# Funciones de utilidad adicionales
+# ============================================
+# Funciones de Utilidad Adicionales
+# ============================================
+# Las siguientes funciones proporcionan funcionalidades complementarias
+# para el manejo de fuentes, citas y análisis estadístico de fragmentos
 def format_sources_citation(sources: List[Dict]) -> str:
     """
     Formatea las fuentes para citación

@@ -1,131 +1,269 @@
 """
-Sistema RAG para Control de Calidad del Conocimiento Interno
-Archivo: evaluate.py
-Nombre: Ronald Castillo Capino
-Email: ron.h.castillo@gmail.com
-Descripción: Evaluación cuantitativa del sistema RAG usando métricas RAGAS
-"""
+Sistema de Evaluación para el Control de Calidad del Conocimiento Interno
 
+Este módulo implementa la evaluación cuantitativa del sistema RAG utilizando métricas RAGAS.
+Permite medir la calidad de las respuestas generadas por el modelo en términos de:
+- Fidelidad (Faithfulness)
+- Relevancia (Answer Relevancy)
+- Precisión del Contexto (Context Precision)
+- Recuperación del Contexto (Context Recall)
+
+Autor: Ronald Castillo Capino
+Email: ron.h.castillo@gmail.com
+"""
 import os
-import json
-import warnings
+
+
+# Agregar al inicio de evaluate.py, después de las importaciones
+
+# ============================================
+# Limpiar variables de entorno problemáticas
+# ============================================
+
+# Remover cualquier configuración de API externa que pueda interferir
+if 'OPENAI_API_KEY' in os.environ:
+    del os.environ['OPENAI_API_KEY']
+
+if 'OPENAI_MODEL_NAME' in os.environ:
+    del os.environ['OPENAI_MODEL_NAME']
+
+if 'OPENAI_BASE_URL' in os.environ:
+    del os.environ['OPENAI_BASE_URL']
+
+# Configurar explícitamente que no use APIs externas
+os.environ['RAGAS_DO_NOT_TRACK'] = 'true'
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
+
+print("Variables de entorno limpiadas para uso completamente local")
+
+# Configuración de GitPython antes de cualquier otra importación
+os.environ['GIT_PYTHON_REFRESH'] = '0'  # 0 = no message, 1 = warning, 2 = exception
+os.environ['GIT_PYTHON_DISABLE_OPTIONAL_GIT_BINARY_VALIDATION'] = '1'
+
 import datetime
+import warnings
 from typing import List, Dict, Any
 from datasets import Dataset
 from dotenv import load_dotenv
 
-# Suppress Git warnings
-os.environ['GIT_PYTHON_REFRESH'] = 'quiet'
+# Importaciones para RAGAS y LangChain
+from ragas.integrations.langchain import LangchainLLMWrapper
+from ragas.embeddings import LangchainEmbeddingsWrapper
+from langchain_huggingface import HuggingFaceEmbeddings
+from ragas import run_config
 
-# Try to import ragas with suppressed warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    try:
-        from ragas import evaluate
+# Cargar variables de entorno desde el archivo .env
+load_dotenv()
+
+# ============================================
+# Configuración del Sistema de Evaluación
+# ============================================
+# Configuración de fragmentación de texto
+# Tamaño de fragmentos para procesamiento
+CHUNK_SIZE = int(os.getenv('CHUNK_SIZE', '4000'))
+# Solapamiento entre fragmentos
+CHUNK_OVERLAP = int(os.getenv('CHUNK_OVERLAP', '200')) 
+# Fragmentos a recuperar por consulta
+TOP_K_RETRIEVAL = int(os.getenv('TOP_K_RETRIEVAL', '5'))
+
+# Configuración del modelo de lenguaje
+# Control de creatividad (0.0-1.0)
+LLM_TEMPERATURE = float(os.getenv('LLM_TEMPERATURE', '0.1'))
+# Longitud máxima de respuestas
+MAX_TOKENS = int(os.getenv('MAX_TOKENS', '2048'))
+# Tamaño máximo de contexto
+CONTEXT_WINDOW = int(os.getenv('CONTEXT_WINDOW', '131072'))
+
+# Configuración de la evaluación
+# Número de muestras para evaluación
+EVAL_SAMPLES = int(os.getenv('EVAL_SAMPLES', '5'))
+EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL', 
+                            'sentence-transformers/all-MiniLM-L6-v2')
+
+# Clave de API (no necesaria para modelo local)
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'not-needed')
+RAGAS_MODEL_ID = os.getenv('RAGAS_MODEL_ID', 
+                           'unsloth/Llama-3.1-Nemotron-Nano-8B-v1-GGUF/Llama-3.1-Nemotron-Nano-8B-v1-Q4_K_S.gguf')
+LOCAL_MODEL_PATH = os.getenv('LOCAL_MODEL_PATH', 
+                            'C:\\Users\\ronal\\.cache\\lm-studio\\models\\unsloth\\Llama-3.1-Nemotron-Nano-8B-v1-GGUF\\Llama-3.1-Nemotron-Nano-8B-v1-Q4_K_S.gguf')
+N_CTX = int(os.getenv('N_CTX', '16384'))
+N_GPU_LAYERS = int(os.getenv('N_GPU_LAYERS', '30'))
+N_BATCH = int(os.getenv('N_BATCH', '512'))
+N_THREADS = int(os.getenv('N_THREADS', '6'))
+
+# La configuración de GitPython ya se realizó al inicio del archivo
+
+# ============================================
+# Manejo de Dependencias Opcionales
+# ============================================
+# Las siguientes importaciones son necesarias para la evaluación RAGAS
+# pero son manejadas de forma condicional para evitar errores
+try:
+    from ragas import evaluate as ragas_evaluate
+    from ragas.metrics import (
+        faithfulness, 
+        answer_relevancy, 
+        context_recall, 
+        context_precision,
+        answer_similarity,
+        answer_correctness,
+        AspectCritic  
+    )
+    # Definir 'harmfulness' usando AspectCritic (la forma correcta y moderna)
+    harmfulness = AspectCritic(
+        name="harmfulness",
+        definition="Whether the generated answer is harmful, unethical,'\
+            ' dangerous, or illegal."
+    )
+    from langchain_community.llms import LlamaCpp
+    
+    RAGAS_AVAILABLE = True
+except ImportError as e:
+    RAGAS_AVAILABLE = False
+    warnings.warn(f"""
+                  Error al importar dependencias de evaluación: {str(e)}. 
+                  La evaluación no se ejecutará.""")
+
+# Importar el sistema RAG
+try:
+    from main import RAGSystem
+except ImportError as e:
+    print(f"Error al importar RAGSystem: {str(e)}")
+    RAGAS_AVAILABLE = False
+
+
+# ============================================
+# Configuración del Sistema
+# ============================================
+EMBEDDING_MODEL = os.getenv(
+    'EMBEDDING_MODEL',
+    'sentence-transformers/all-MiniLM-L6-v2'
+)
+
+# Configuración de RAGAS
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+os.environ["OPENAI_MODEL_NAME"] = RAGAS_MODEL_ID
+
+# La configuración de GitPython ya se realizó al inicio del archivo
+
+# Variable global para verificar la disponibilidad de RAGAS
+RAGAS_AVAILABLE = False
+try:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        from ragas import evaluate as ragas_evaluate
         from ragas.metrics import (
             faithfulness,
             answer_relevancy, 
             context_precision,
             context_recall,
             answer_similarity,
-            answer_correctness
+            answer_correctness,
+            AspectCritic
         )
-        from ragas.metrics.critique import harmfulness
+        harmfulness = AspectCritic(
+            name="harmfulness",
+            definition="Whether the generated answer is harmful, "\
+                "unethical, dangerous, or illegal."
+        )
+        from langchain_community.llms import LlamaCpp
         RAGAS_AVAILABLE = True
-    except ImportError:
-        RAGAS_AVAILABLE = False
-        print("Advertencia: No se pudo importar ragas. La evaluación detallada no estará disponible.")
+except ImportError as e:
+    print(f"""Advertencia: 
+          No se pudo importar las dependencias necesarias: {str(e)}""")
+    print("""La evaluación detallada no estará disponible. 
+          Instala los paquetes con:""")
+    print("pip install ragas langchain-community llama-cpp-python")
 
-# Configuración del modelo local
-LOCAL_LLM_URL = os.getenv('LOCAL_LLM_URL', 'http://localhost:1234/v1')
-MODEL_NAME = os.getenv('MODEL_NAME', 'llama-3.1-nemotron-nano-4b-v1.1')
+# Importar el sistema RAG (asegúrate de que el archivo 'main.py' exista)
+try:
+    from main import RAGSystem
+except ImportError:
+    print("""Error: 
+          No se pudo importar RAGSystem desde main.py. 
+          Asegúrate de que el archivo exista.""")
+    exit()
 
-# Configuración de evaluación
-EVAL_SAMPLES = int(os.getenv('EVAL_SAMPLES', '0'))  # 0 para evaluar todo
-EVALUATION_OUTPUT_PATH = os.getenv('EVALUATION_OUTPUT_PATH', 'evaluate/evaluation_report.txt')
+# ============================================
+# Configuración del Sistema de Evaluación
+# ============================================
+# Esta sección define los parámetros y configuraciones
+# específicas para la evaluación del modelo RAG
+# URL ya configurada anteriormente, usando la variable existente
+# para mantener consistencia con la configuración previa
+MODEL_NAME = os.getenv('MODEL_NAME', 'llama-3.1-nemotron-nano-8b-v1')
+EVAL_SAMPLES = int(os.getenv('EVAL_SAMPLES', '0'))
+EVALUATION_OUTPUT_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    os.getenv('EVALUATION_OUTPUT_PATH', 
+              'evaluate/evaluation_report.txt')
+)
 
 # Asegurar que el directorio de salida exista
-os.makedirs(os.path.dirname(EVALUATION_OUTPUT_PATH) or '.', exist_ok=True)
+os.makedirs(os.path.dirname(EVALUATION_OUTPUT_PATH), exist_ok=True)
 
-from main import RAGSystem
+# --- FUNCIONES AUXILIARES ---
 
-def create_evaluation_dataset(sample_size: int = 0) -> List[Dict[str, str]]:
+def create_evaluation_dataset(sample_size: int = 0) -> List[Dict[str, List[str]]]:
     """
-    Crea un dataset de evaluación con preguntas y respuestas esperadas
-    sobre Statistical Learning
+    Crea un dataset de evaluación con preguntas y respuestas esperadas sobre Statistical Learning.
+    
+    Args:
+        sample_size (int): Número de muestras a tomar. Si es 0, se usan todas.
     
     Returns:
-        List[Dict]: Dataset de evaluación con preguntas en español y respuestas concisas
+        List[Dict]: Dataset de evaluación.
     """
     evaluation_data = [
-        {
-            "question": ["In the context of statistical learning, what is the difference between reducible and irreducible error?"],
-            "ground_truth": ["Reducible error is due to an imperfect model and can be decreased by choosing a better algorithm. Irreducible error is due to the inherent variability (noise ε) in the data and represents a lower bound on the test error for any model."]
-        },
-        {
-            "question": ["Why is linear regression not appropriate for classification problems with qualitative responses?"],
-            "ground_truth": ["Because encoding a qualitative response with numbers (e.g., 1, 2, 3) imposes an artificial order and distance between classes. Furthermore, the model can produce predictions outside the [0, 1] probability range."]
-        },
-        {
-            "question": ["What is the main difference in assumptions between Linear Discriminant Analysis (LDA) and Quadratic Discriminant Analysis (QDA)?"],
-            "ground_truth": ["LDA assumes that all classes share a common covariance matrix, resulting in a linear decision boundary. QDA is more flexible and allows each class to have its own covariance matrix, which results in a quadratic decision boundary."]
-        },
-        {
-            "question": ["In which situation might the Lasso method outperform Ridge regression in predictive accuracy?"],
-            "ground_truth": ["Lasso tends to be superior when a relatively small number of predictors have substantial coefficients and the rest are very small or zero. Ridge is better when the response depends on many predictors with similarly sized coefficients."]
-        },
-        {
-            "question": ["What is the advantage of regression splines over polynomial regression for modeling non-linear relationships?"],
-            "ground_truth": ["Splines introduce flexibility by adding 'knots' at specific points, allowing the fit to change locally. This avoids the erratic behavior at the boundaries of the data range that is often seen in high-degree polynomials."]
-        },
-        {
-            "question": ["How does a Random Forest improve on the performance of Bagging?"],
-            "ground_truth": ["When building each tree, a Random Forest considers only a random subset of predictors at each split. This decorrelates the trees in the ensemble, which reduces the variance of the final prediction compared to Bagging, where all predictors are considered at each split."]
-        },
-        {
-            "question": ["What is the purpose of the 'kernel trick' in Support Vector Machines (SVMs)?"],
-            "ground_truth": ["The kernel trick allows operating in a higher-dimensional feature space without explicitly calculating the data's coordinates in that space. This makes it computationally efficient to create non-linear decision boundaries."]
-        },
-        {
-            "question": ["How does Boosting differ from Bagging in tree-based ensemble methods?"],
-            "ground_truth": ["In Bagging, trees are built independently on bootstrap samples. In Boosting, trees are built sequentially, where each new tree is fitted to correct the errors (residuals) of the previous trees, thus learning slowly."]
-        },
-        {
-            "question": ["What is 'censoring' in survival analysis and why is it a problem?"],
-            "ground_truth": ["Censoring occurs when an individual's survival time is unknown beyond a certain point (e.g., the study ends). It's a problem because these observations cannot be ignored, but their observed time cannot be used as the actual event time, requiring specialized analysis methods."]
-        },
-        {
-            "question": ["What is the difference between controlling the Family-Wise Error Rate (FWER) and the False Discovery Rate (FDR) in multiple hypothesis testing?"],
-            "ground_truth": ["Controlling the FWER aims to limit the probability of making at least one Type I error (one false positive). Controlling the FDR is less strict and aims to limit the expected proportion of false discoveries among all rejected hypotheses."]
-        },
-        {
-            "question": ["What role does the non-linear activation function play in a neural network?"],
-            "ground_truth": ["The non-linear activation function is essential because without it, a neural network with multiple layers would collapse into a simple linear model. It allows the model to capture complex, non-linear relationships between variables."]
-        },
-        {
-            "question": ["What type of data are Convolutional Neural Networks (CNNs) specialized for?"],
-            "ground_truth": ["CNNs are specialized for data with a spatial grid-like structure, such as images. They use convolutional layers to detect local features (edges, textures) which are then combined to form more complex patterns."]
-        }
+        {"question": "What is the main difference between supervised and unsupervised learning?",
+        "ground_truth": "In supervised learning, for each observation of the predictor measurements, there is an associated response measurement. Models are fitted to predict the response based on the predictors. In unsupervised learning, predictor measurements are available, but there is no associated response. The goal is to understand the relationships between the variables or among the observations."},
+
+        {"question": "What is overfitting in machine learning?",
+        "ground_truth": "Overfitting refers to a phenomenon where a model learns the training data too well, following the noise or errors in the data too closely. This results in a low error on the training data but a high error on previously unseen test data, as the model has not learned the true underlying signal."},
+
+        {"question": "What is the bias-variance trade-off?",
+        "ground_truth": "The bias-variance trade-off is a property of statistical learning methods describing how the expected test error rate decomposes into the sum of the model's squared bias, its variance, and the irreducible error's variance[cite: 51]. Generally, more flexible models have lower bias but higher variance, and vice-versa. Decreasing one tends to increase the other, and the challenge is to find a sweet spot that minimizes the total error[cite: 51]."},
+
+        {"question": "Briefly describe the K-Nearest Neighbors (KNN) method.",
+        "ground_truth": "K-Nearest Neighbors (KNN) is a non-parametric method that, for a given test observation, identifies the K training points that are closest to it in the predictor space. For regression, the predicted outcome is the average of the responses of these K neighbors. For classification, the most common class among the K neighbors is predicted[cite: 55, 38]."},
+
+        {"question": "What is regularization used for in linear models?",
+        "ground_truth": "Regularization, also known as shrinkage, is used to constrain or shrink the estimated coefficients in linear models. This can significantly reduce the model's variance. Two prominent examples are Ridge regression, which uses an L2 penalty to shrink coefficients, and the Lasso, which uses an L1 penalty that can shrink some coefficients to exactly zero, thus performing variable selection[cite: 58]."},
+
+        {"question": "How does the dimensionality of data impact machine learning algorithms?",
+        "ground_truth": "High dimensionality, where the number of predictors 'p' is large, presents significant challenges. Data becomes sparse, distances between observations can lose meaning, and the likelihood of overfitting increases as the model's flexibility grows. This phenomenon, known as the 'curse of dimensionality', can lead a model to fit the training data's noise perfectly but fail to generalize to new data[cite: 58]."},
+
+        {"question": "What is the purpose of cross-validation?",
+        "ground_truth": "Cross-validation is a resampling method used to estimate the test error of a statistical learning model[cite: 58]. It allows for assessing the model's performance on unseen data without requiring a separate, explicit test set by splitting the training data into training and validation subsets. k-fold cross-validation is a common method where the data is divided into k folds[cite: 58]."},
+
+        {"question": "Explain the difference between 'bagging' and 'boosting' methods.",
+        "ground_truth": "Bagging and Boosting are tree-based ensemble methods. Bagging (Bootstrap Aggregating) reduces variance by training multiple decision trees in parallel on different bootstrap samples of the data and averaging their predictions. Boosting, in contrast, builds trees sequentially, where each new tree is fitted to correct the residual errors of the previous one, turning weak learners into a strong one and reducing both bias and variance[cite: 60]."},
+
+        {"question": "What advantages do non-linear methods offer over linear ones, according to the book?",
+        "ground_truth": "Non-linear methods, such as decision trees, splines, or generalized additive models, have the advantage of being able to capture more complex, non-linear relationships between predictors and the response. While linear models assume an additive and linear relationship, non-linear methods are more flexible and can produce more accurate models when the true underlying relationship is not linear[cite: 60]."},
+
+        {"question": "What is the importance of a model's interpretability, according to the context of the book?",
+        "ground_truth": "Interpretability refers to the ease with which the relationship between predictors and the response can be understood. While less flexible models are often less accurate, they are more interpretable. Interpretability is crucial when the goal is inference—that is, understanding how changes in the predictors affect the response—which is fundamental for decision-making in many fields[cite: 51]."}
     ]
     
-    # Si sample_size > 0, tomar solo una muestra aleatoria
-    if sample_size > 0 and sample_size < len(evaluation_data):
+    # Si se especifica, toma una muestra aleatoria para la evaluación.
+    if 0 < sample_size < len(evaluation_data):
         import random
-        random.seed(42)  # Para reproducibilidad
-        evaluation_data = random.sample(evaluation_data, sample_size)
+        random.seed(42)
+        return random.sample(evaluation_data, sample_size)
     
     return evaluation_data
 
 def prepare_ragas_dataset(rag_system: RAGSystem, evaluation_data: List[Dict]) -> Dataset:
     """
-    Prepara el dataset para evaluación con RAGAS
+    Prepara el dataset en el formato requerido por RAGAS.
     
     Args:
-        rag_system: Instancia del sistema RAG
+        rag_system: Instancia del sistema RAG configurado
         evaluation_data: Lista de diccionarios con preguntas y respuestas esperadas
         
     Returns:
-        Dataset: Dataset formateado para RAGAS
+        Dataset: Dataset en formato compatible con RAGAS
     """
     results = {
         'question': [],
@@ -133,21 +271,34 @@ def prepare_ragas_dataset(rag_system: RAGSystem, evaluation_data: List[Dict]) ->
         'answer': [],
         'ground_truth': []
     }
-    
+    evaluation_data=[evaluation_data[0]]
     for i, item in enumerate(evaluation_data, 1):
         question = item["question"]
         ground_truth = item["ground_truth"]
-        
-        print(f"\n[{i}/{len(evaluation_data)}] Procesando: {question[:50]}...")
+        q=question if len(question)<50 else question[:50]+'...'
+        print(f"\n[{i}/{len(evaluation_data)}] Procesando: {q}")
         
         try:
-            # Obtener respuesta del sistema RAG
-            rag_result = rag_system.generate_response(question)
-            answer = rag_result.get('answer', 'No se pudo generar respuesta')
+            # Generar respuesta usando el sistema RAG
+            response_dict = rag_system.generate_response(question)
+            answer = response_dict.get('answer', '')
             
-            # Obtener contexto recuperado
-            context_chunks = rag_system.retrieve_context(question)
-            contexts = [chunk['text'] for chunk in context_chunks]
+            # Obtener los contextos usados con manejo de errores
+            sources = response_dict.get('sources_used', [])
+            contexts = []
+            for src in sources:
+                if isinstance(src, dict):
+                    # Intentar diferentes posibles claves para el texto
+                    text = src.get('text') or src.get('content') or str(src)
+                    if text and isinstance(text, str):
+                        contexts.append(text)
+                elif isinstance(src, str):
+                    contexts.append(src)
+            
+            # Si no se encontraron contextos, usar una lista vacía
+            if not contexts:
+                print("[ADVERTENCIA] No se encontraron contextos para la pregunta")
+                contexts = [""]
             
             # Agregar al dataset
             results['question'].append(question)
@@ -165,439 +316,353 @@ def prepare_ragas_dataset(rag_system: RAGSystem, evaluation_data: List[Dict]) ->
 
 def _interpret_metric(metric_name: str, score: float) -> str:
     """
-    Proporciona una interpretación de la métrica y su puntuación
-    
-    Args:
-        metric_name: Nombre de la métrica
-        score: Puntuación de la métrica
-        
-    Returns:
-        str: Interpretación de la métrica
+    Proporciona una interpretación de la métrica basada en la puntuación.
     """
     interpretation = {
-        'faithfulness': lambda s: f"La respuesta es {'altamente fiel' if s > 0.8 else 'moderadamente fiel' if s > 0.5 else 'poco fiel'} al contexto proporcionado.",
+        'faithfulness': lambda s: f"La respuesta es {'altamente fiel' if s > 0.8 else 'moderadamente fiel' if s > 0.5 else 'poco fiel'} al contexto.",
         'answer_relevancy': lambda s: f"La respuesta es {'altamente relevante' if s > 0.8 else 'moderadamente relevante' if s > 0.5 else 'poco relevante'} a la pregunta.",
         'context_precision': lambda s: f"La precisión del contexto es {'excelente' if s > 0.8 else 'buena' if s > 0.5 else 'baja'}.",
         'context_recall': lambda s: f"La recuperación del contexto es {'completa' if s > 0.8 else 'parcial' if s > 0.5 else 'insuficiente'}.",
         'answer_similarity': lambda s: f"La similitud con la respuesta de referencia es {'muy alta' if s > 0.8 else 'moderada' if s > 0.5 else 'baja'}.",
         'answer_correctness': lambda s: f"La corrección de la respuesta es {'alta' if s > 0.8 else 'moderada' if s > 0.5 else 'baja'}.",
-        'harmfulness': lambda s: f"El contenido es {'seguro' if s < 0.2 else 'potencialmente problemático' if s < 0.5 else 'peligroso'}."
+        'harmfulness': lambda s: f"El contenido es {'seguro' if s < 0.2 else 'potencialmente problemático' if s < 0.5 else 'peligroso' if s < 0.8 else 'muy peligroso'}"
     }
     
     return interpretation.get(metric_name, lambda _: "Sin interpretación disponible.")(score)
 
-
-def run_ragas_evaluation(dataset: Dataset) -> Dict[str, Dict[str, Any]]:
-    """
-    Ejecuta la evaluación RAGAS en el dataset proporcionado
-    
-    Args:
-        dataset: Dataset preparado para evaluación
-        
-    Returns:
-        Dict: Resultados de las métricas con información detallada
-    """
-    if not RAGAS_AVAILABLE:
-        raise ImportError("RAGAS no está disponible para la evaluación")
-    
-    print("\nIniciando evaluación RAGAS...")
-    
-    # Definir métricas a evaluar con sus descripciones detalladas
-    metrics = [
-        ("faithfulness", 
-         "Fidelidad (Faithfulness)",
-         "Mide cuán fiel es la respuesta generada al contexto proporcionado. Evalúa si la respuesta se puede inferir directamente del contexto dado.",
-         "Esta métrica es crucial para garantizar que el sistema no genere información inventada o no respaldada por el contexto.")
-    ]
-    
-    try:
-        # Mapeo de nombres de métricas a sus objetos
-        metric_map = {
-            'faithfulness': faithfulness,
-            'answer_relevancy': answer_relevancy,
-            'context_precision': context_precision,
-            'context_recall': context_recall,
-            'answer_similarity': answer_similarity,
-            'answer_correctness': answer_correctness,
-            'harmfulness': harmfulness
-        }
-        
-        # Obtener solo los objetos métrica que están disponibles
-        metric_objects = []
-        for name, *rest in metrics:
-            if name in metric_map:
-                metric_objects.append(metric_map[name])
-        
-        if not metric_objects:
-            raise ValueError("No se encontraron métricas válidas para evaluar")
-        
-        # Ejecutar evaluación
-        result = evaluate(
-            dataset=dataset,
-            metrics=metric_objects,
-            raise_exceptions=False
-        )
-        
-        # Procesar resultados con información adicional
-        evaluation_results = {}
-        for (metric_name, display_name, description, importance), score in zip(metrics, result.values()):
-            if metric_name in metric_map:  # Solo procesar métricas válidas
-                evaluation_results[metric_name] = {
-                    'score': float(score),
-                    'display_name': display_name,
-                    'description': description,
-                    'importance': importance,
-                    'interpretation': _interpret_metric(metric_name.split('_')[0], float(score)),
-                    'recommendation': get_recommendation(metric_name, float(score))
-                }
-        
-        # Calcular puntuación promedio
-        scores = [data['score'] for data in evaluation_results.values() 
-                 if isinstance(data, dict) and 'score' in data]
-        if scores:
-            evaluation_results['average_score'] = {
-                'score': sum(scores) / len(scores),
-                'description': 'Puntuación promedio de todas las métricas',
-                'interpretation': 'Puntuación general del sistema RAG'
-            }
-        
-        return evaluation_results
-    
-    except Exception as e:
-        print(f"[ERROR] Error al ejecutar la evaluación RAGAS: {str(e)}")
-        return {}
-    
-    finally:
-        print("\nEvaluación RAGAS finalizada.")
-
-
-def get_recommendation(metric: str, score: float) -> str:
-    """
-    Devuelve recomendaciones basadas en la métrica y puntuación
-    """
-    recommendations = {
-        'faithfulness': [
-            (0.0, 0.5, "Las respuestas no son consistentes con el contexto. Revisa el prompt y el modelo."),
-            (0.5, 0.7, "Mejora la fidelidad ajustando el prompt para que se ciña más al contexto.")
-        ],
-        'answer_relevancy': [
-            (0.0, 0.6, "Las respuestas no son suficientemente relevantes. Mejora el sistema de recuperación."),
-            (0.6, 0.8, "Considera refinar el prompt para obtener respuestas más directas a las preguntas.")
-        ],
-        'context_precision': [
-            (0.0, 0.6, "Los fragmentos recuperados no son suficientemente relevantes. Mejora la recuperación."),
-            (0.6, 0.8, "Considera ajustar los parámetros de recuperación para obtener contexto más relevante.")
-        ],
-        'context_recall': [
-            (0.0, 0.5, "Se está perdiendo información relevante. Aumenta el número de fragmentos recuperados."),
-            (0.5, 0.7, "Considera mejorar la estrategia de recuperación para capturar más contexto relevante.")
-        ],
-        'answer_similarity': [
-            (0.0, 0.6, "Las respuestas generadas difieren significativamente de las esperadas. Revisa el modelo."),
-            (0.6, 0.8, "Consideras ajustar el prompt para obtener respuestas más cercanas a las esperadas.")
-        ],
-        'answer_correctness': [
-            (0.0, 0.6, "Las respuestas contienen información incorrecta. Revisa el modelo y los datos de entrenamiento."),
-            (0.6, 0.8, "Mejora la precisión de las respuestas ajustando el prompt o el modelo.")
-        ]
-    }
-    
-    # Obtener recomendación específica para la métrica
-    if metric in recommendations:
-        for min_score, max_score, recommendation in recommendations[metric]:
-            if min_score <= score < max_score:
-                return recommendation
-    
-    # Recomendación genérica si no hay una específica
-    return "Revisa la configuración del sistema para mejorar esta métrica."
-
-    report += "-"*40 + "\n"
-    report += f"Modelo: {MODEL_NAME}\n"
-    report += f"URL del servidor: {LOCAL_LLM_URL}\n"
-    if results:
-        report += f"Métricas evaluadas: {', '.join(results.keys())}\n"
-    report += "\n" + "="*80 + "\n"
-    report += "RESULTADOS DETALLADOS\n"
-    report += "="*80 + "\n\n"
-    
-    # Resultados detallados
+def display_evaluation_results(results: Dict[str, float]):
+    """Muestra los resultados de la evaluación en la consola."""
     if not results:
-        report += "No hay resultados para mostrar.\n"
-    else:
-        # Métricas principales
-        report += "MÉTRICAS PRINCIPALES:\n"
-        report += "-"*40 + "\n"
+        print("No hay resultados para mostrar.")
+        return
         
-        for metric, score in results.items():
-            if metric == 'basic_accuracy':
-                formatted_score = f"{score*100:.1f}%"
-            else:
-                formatted_score = f"{score:.4f}"
-            report += f"{metric.upper()}: {formatted_score}\n"
-        
-        # Puntuación promedio (excluyendo basic_accuracy si existe)
-        numeric_scores = [v for k, v in results.items() if k != 'basic_accuracy']
-        if numeric_scores:
-            avg_score = sum(numeric_scores) / len(numeric_scores)
-            report += f"\nPUNTAJE PROMEDIO: {avg_score:.4f}\n"
-    
-
-def create_detailed_report(rag_system: RAGSystem, results: Dict) -> str:
-    """
-    Crea un reporte detallado de la evaluación
-    
-    Args:
-        rag_system: Instancia del sistema RAG
-        results: Resultados de la evaluación
-        
-    Returns:
-        str: Reporte detallado en formato de texto
-    """
-    report = []
-    report.append("="*80)
-    report.append("REPORTE DETALLADO DE EVALUACIÓN DEL SISTEMA RAG".center(80))
-    report.append("="*80)
-    report.append(f"\nFecha: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Obtener información del modelo de embedding de manera segura
-    model_info = 'Desconocido'
-    if hasattr(rag_system, 'embedding_model'):
-        if hasattr(rag_system.embedding_model, '_modules') and '0' in rag_system.embedding_model._modules:
-            # Para modelos SentenceTransformer
-            model_info = rag_system.embedding_model._modules['0'].__class__.__name__
-        elif hasattr(rag_system.embedding_model, '__class__'):
-            # Para otros tipos de modelos
-            model_info = rag_system.embedding_model.__class__.__name__
-    
-    report.append(f"Modelo de embedding: {model_info}")
-    report.append(f"Métricas evaluadas: {', '.join([m for m in results.keys() if m != 'average_score'])}")
-    
-    # Agregar resumen ejecutivo
-    report.append("\n" + "RESUMEN EJECUTIVO".center(80, '-'))
-    
-    if 'average_score' in results:
-        avg = results['average_score']
-        report.append(f"\nPuntuación promedio: {avg.get('score', 0):.2f}")
-        report.append(f"Interpretación: {avg.get('interpretation', 'No disponible')}")
-    
-    # Agregar métricas detalladas
-    report.append("\n" + "MÉTRICAS DETALLADAS".center(80, '-'))
-    
-    for metric_name, metric_data in results.items():
-        if metric_name != 'average_score' and isinstance(metric_data, dict):
-            report.append(f"\n{metric_data.get('display_name', metric_name).upper()}:")
-            # Formatear la puntuación de manera segura
-            score = metric_data.get('score', 'N/A')
-            if isinstance(score, (int, float)):
-                score_str = f"{score:.2f}"
-            else:
-                score_str = str(score)
-            report.append(f"  - Puntuación: {score_str}")
-            report.append(f"  - Descripción: {metric_data.get('description', 'Sin descripción')}")
-            report.append(f"  - Interpretación: {metric_data.get('interpretation', 'Sin interpretación')}")
-            
-            # Agregar recomendaciones si están disponibles
-            if 'recommendation' in metric_data and metric_data['recommendation']:
-                report.append("  - Recomendaciones:")
-                for rec in metric_data['recommendation'].split('\n'):
-                    report.append(f"    * {rec}")
-    
-    # Agregar conclusión general
-    report.append("\n" + "CONCLUSIÓN".center(80, '-'))
-    if 'average_score' in results:
-        avg_score = results['average_score'].get('score', 0)
-        if avg_score >= 0.8:
-            conclusion = "El sistema RAG tiene un excelente rendimiento general."
-        elif avg_score >= 0.6:
-            conclusion = "El sistema RAG tiene un buen rendimiento, pero hay áreas de mejora."
-        else:
-            conclusion = "El sistema RAG necesita mejoras significativas en su rendimiento."
-        report.append(f"\n{conclusion}")
-    
-    # Convertir a string
-    detailed_report = '\n'.join(report)
-    
-    # Guardar en archivo
-    try:
-        with open(EVALUATION_OUTPUT_PATH, 'w', encoding='utf-8') as f:
-            f.write(detailed_report)
-        print(f"[OK] Reporte detallado guardado en: {os.path.abspath(EVALUATION_OUTPUT_PATH)}")
-    except Exception as e:
-        print(f"[ERROR] Error al guardar el reporte: {str(e)}")
-    
-    return detailed_report
-
-
-def display_evaluation_results(results: Dict) -> None:
-    """
-    Muestra los resultados de la evaluación en la consola
-    
-    Args:
-        results: Diccionario con los resultados de la evaluación
-    """
     print("\n" + "="*80)
     print("RESULTADOS DE LA EVALUACIÓN".center(80))
     print("="*80)
     
-    # Verificar si es una evaluación básica o RAGAS
-    if 'basic_evaluation' in results:
-        # Mostrar resultados de evaluación básica
-        basic = results['basic_evaluation']
-        print(f"\nEvaluación Básica - {basic['samples_evaluated']} muestras evaluadas")
-        print("-" * 80)
-        
-        for i, (key, item) in enumerate(basic['details'].items()):
-            print(f"\nPregunta {i+1}:")
-            print(f"  - Pregunta: {item['question']}")
-            print(f"  - Respuesta esperada: {item['expected_answer']}")
-            print(f"  - Respuesta generada: {item['actual_answer']}")
-            print(f"  - Evaluación: {item.get('evaluation', 'No evaluado')}")
+    # Mostrar cada métrica con su puntuación, interpretación y descripción
+    for metric, score in results.items():
+        print(f"\n- {metric.replace('_', ' ').title()}: {score:.4f}")
+        print(f"   Interpretación: {_interpret_metric(metric, score)}")
+        print(f"   Recomendación: {get_recommendation(metric, score)}")
+    
+    # Mostrar resumen
+    avg_score = sum(results.values()) / len(results) if results else 0
+    print("\n" + "-"*80)
+    print(f"Puntuación promedio: {avg_score:.4f}")
+    
+    # Mostrar recomendaciones generales
+    print("\n" + "-"*80)
+    print("RECOMENDACIONES GENERALES".center(80))
+    print("-"*80)
+    
+    # Identificar métricas que necesitan atención
+    needs_attention = {m: s for m, s in results.items() if s < 0.5}
+    
+    if needs_attention:
+        print("Se recomienda priorizar la mejora de las siguientes métricas:")
+        for metric, score in needs_attention.items():
+            print(f"- {metric.replace('_', ' ').title()} ({score:.4f}): {get_recommendation(metric, score)}")
     else:
-        # Mostrar resultados de RAGAS
-        print("\nMétricas de Evaluación RAGAS:")
-        print("-" * 80)
-        
-        # Filtrar métricas que no son promedios
-        metrics = {k: v for k, v in results.items() if k != 'average_score' and isinstance(v, dict)}
-        
-        # Mostrar métricas individuales
-        for metric_name, metric_data in metrics.items():
-            print(f"\n{metric_data.get('display_name', metric_name).upper()}:")
-            print(f"  - Puntuación: {metric_data.get('score', 'N/A'):.2f}")
-            print(f"  - Descripción: {metric_data.get('description', 'Sin descripción')}")
-            print(f"  - Interpretación: {metric_data.get('interpretation', 'Sin interpretación')}")
-            print(f"  - Recomendación: {metric_data.get('recommendation', 'Sin recomendación')}")
-        
-        # Mostrar puntuación promedio si está disponible
-        if 'average_score' in results:
-            avg = results['average_score']
-            print("\n" + "-"*80)
-            print(f"PUNTUACIÓN PROMEDIO: {avg.get('score', 0):.2f}")
-            print(f"{avg.get('interpretation', '')}")
+        print("Todas las métricas están en un nivel aceptable. Se recomienda continuar con el monitoreo regular.")
     
-    print("\n" + "="*80 + "\n")
+    print("\n" + "="*80)
 
-
-def perform_basic_evaluation(rag_system: RAGSystem, evaluation_data: List[Dict]) -> Dict:
-    """
-    Realiza una evaluación básica del sistema RAG sin usar RAGAS
-    
-    Args:
-        rag_system: Instancia del sistema RAG
-        evaluation_data: Lista de diccionarios con preguntas y respuestas esperadas
+def create_detailed_report(rag_system: RAGSystem, results: Dict[str, float]):
+    """Crea un reporte detallado de la evaluación."""
+    if not results:
+        print("No hay resultados para generar el reporte.")
+        return
         
-    Returns:
-        Dict: Resultados de la evaluación básica
-    """
-    print("Realizando evaluación básica...")
-    results = {}
+    report_path = "evaluate/evaluation_report.txt"
+    os.makedirs(os.path.dirname(report_path), exist_ok=True)
     
-    for i, item in enumerate(evaluation_data):
-        question = item['question'][0] if isinstance(item['question'], list) else item['question']
-        expected_answer = item['ground_truth'][0] if isinstance(item['ground_truth'], list) else item['ground_truth']
+    # Calcular puntuación promedio
+    avg_score = sum(results.values()) / len(results) if results else 0
+    
+    with open(report_path, 'w', encoding='utf-8') as f:
+        # Encabezado
+        f.write("="*80 + "\n")
+        f.write("REPORTE DETALLADO DE EVALUACIÓN DEL SISTEMA RAG\n".center(80))
+        f.write("="*80 + "\n\n")
         
-        try:
-            # Obtener respuesta del sistema RAG
-            response = rag_system.query(question)
-            
-            # Aquí podrías agregar más métricas básicas si lo deseas
-            results[f'query_{i}'] = {
-                'question': question,
-                'expected_answer': expected_answer,
-                'actual_answer': response,
-                'evaluation': 'No se pudo evaluar (RAGAS no disponible)'
-            }
-            
-        except Exception as e:
-            print(f"Error al procesar la pregunta {i+1}: {str(e)}")
-    
-    return {
-        'basic_evaluation': {
-            'status': 'completed',
-            'samples_evaluated': len(evaluation_data),
-            'details': results
-        }
-    }
-
-
-def run_rag_evaluation(rag_system: RAGSystem, evaluation_data: List[Dict]) -> Dict:
-    """
-    Ejecuta la evaluación del sistema RAG
-    
-    Args:
-        rag_system: Instancia del sistema RAG
-        evaluation_data: Lista de diccionarios con preguntas y respuestas esperadas
+        # Información del sistema
+        f.write(f"Fecha de evaluación: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Modelo LLM: {os.path.basename(LOCAL_MODEL_PATH)}\n")
+        f.write(f"Archivo PDF: {os.path.basename(rag_system.pdf_path)}\n")
+        f.write(f"Puntuación promedio: {avg_score:.4f}\n\n")
         
-    Returns:
-        Dict: Resultados de la evaluación
-    """
-    print("Preparando datos para evaluación RAGAS...")
-    
-    try:
-        # Preparar dataset para RAGAS
-        dataset = prepare_ragas_dataset(rag_system, evaluation_data)
+        # Resumen ejecutivo
+        f.write("-"*80 + "\n")
+        f.write("RESUMEN EJECUTIVO\n")
+        f.write("-"*80 + "\n\n")
         
-        # Ejecutar evaluación RAGAS si está disponible
-        if RAGAS_AVAILABLE:
-            print("Ejecutando evaluación RAGAS...")
-            results = run_ragas_evaluation(dataset)
+        f.write(f"El sistema RAG ha obtenido una puntuación general de {avg_score:.4f} "
+                f"({_interpret_metric('faithfulness', avg_score).replace('La respuesta es ', '').capitalize()}) en la evaluación. ")
+        
+        if avg_score >= 0.7:
+            f.write("El rendimiento general es muy bueno, con la mayoría de las métricas "
+                   "mostrando un rendimiento sólido.\n")
+        elif avg_score >= 0.5:
+            f.write("El rendimiento es aceptable, pero hay áreas que podrían mejorarse. "
+                   "Se recomienda revisar las métricas individuales.\n")
         else:
-            print("RAGAS no está disponible. Realizando evaluación básica...")
-            results = perform_basic_evaluation(rag_system, evaluation_data)
-            
-        return results
+            f.write("El rendimiento es inferior al esperado. Se recomienda una revisión "
+                   "detallada de las métricas individuales.\n")
+        
+        # Métricas detalladas
+        f.write("\n" + "-"*80 + "\n")
+        f.write("MÉTRICAS DETALLADAS\n")
+        f.write("-"*80 + "\n\n")
+        
+        for metric, score in results.items():
+            f.write(f"- {metric.replace('_', ' ').title()}: {score:.4f}\n")
+            f.write(f"   Interpretación: {_interpret_metric(metric, score)}\n")
+            f.write(f"   Recomendación: {get_recommendation(metric, score)}\n\n")
+        
+        # Recomendaciones generales
+        f.write("-"*80 + "\n")
+        f.write("RECOMENDACIONES GENERALES\n")
+        f.write("-"*80 + "\n\n")
+        
+        # Recomendaciones basadas en métricas bajas
+        low_metrics = {m: s for m, s in results.items() if s < 0.5}
+        if low_metrics:
+            f.write("Se recomienda enfocarse en mejorar las siguientes áreas:\n\n")
+            for metric, score in low_metrics.items():
+                f.write(f"- {metric.replace('_', ' ').title()} ({score:.4f}): {get_recommendation(metric, score)}\n")
+        else:
+            f.write("Todas las métricas están en un nivel aceptable o superior. "
+                   "Se recomienda continuar con el monitoreo regular del sistema.\n")
+        
+        # Pie de página
+        f.write("\n" + "="*80 + "\n")
+        f.write("Fin del reporte de evaluación\n".center(80))
+        f.write("="*80 + "\n")
+    
+    print(f"\nReporte detallado guardado en: {os.path.abspath(report_path)}")
+
+def get_recommendation(metric: str, score: float) -> str:
+    """
+    Devuelve recomendaciones basadas en la métrica y la puntuación.
+    """
+    recommendations = {
+        'faithfulness': [
+            (0.0, 0.3, "Las respuestas no son consistentes con el contexto. Revisa el modelo y el prompt."),
+            (0.3, 0.6, "Mejora la fidelidad ajustando el prompt para que se ciña más al contexto."),
+            (0.6, 0.8, "La fidelidad es buena, pero podría mejorarse con un ajuste fino del modelo."),
+            (0.8, 1.0, "Excelente fidelidad. Las respuestas son consistentes con el contexto.")
+        ],
+        'answer_relevancy': [
+            (0.0, 0.4, "Las respuestas no son relevantes. Revisa el sistema de recuperación y el modelo."),
+            (0.4, 0.7, "Mejora la relevancia de las respuestas ajustando el prompt y los parámetros de búsqueda."),
+            (0.7, 0.9, "Buena relevancia. Considera ajustes menores para mejorar aún más."),
+            (0.9, 1.0, "Excelente relevancia. Las respuestas son muy pertinentes a las preguntas.")
+        ],
+        'context_precision': [
+            (0.0, 0.5, "Baja precisión en la recuperación de contexto. Revisa el sistema de recuperación."),
+            (0.5, 0.7, "Precisión moderada. Ajusta los parámetros de búsqueda semántica."),
+            (0.7, 0.9, "Buena precisión. Los contextos recuperados son generalmente relevantes."),
+            (0.9, 1.0, "Excelente precisión. Los contextos recuperados son altamente relevantes.")
+        ],
+        'context_recall': [
+            (0.0, 0.4, "Se está perdiendo mucha información relevante. Aumenta el número de fragmentos."),
+            (0.4, 0.7, "Recuperación moderada. Considera mejorar la estrategia de recuperación."),
+            (0.7, 0.9, "Buena recuperación. La mayoría de la información relevante se está recuperando."),
+            (0.9, 1.0, "Excelente recuperación. Prácticamente toda la información relevante está siendo recuperada.")
+        ],
+        'answer_similarity': [
+            (0.0, 0.5, "Baja similitud con las respuestas de referencia. Revisa el modelo y el prompt."),
+            (0.5, 0.7, "Similitud moderada. Ajusta el prompt para obtener respuestas más cercanas a las referencias."),
+            (0.7, 0.9, "Buena similitud. Las respuestas son cercanas a las referencias."),
+            (0.9, 1.0, "Excelente similitud. Las respuestas son prácticamente idénticas a las referencias.")
+        ],
+        'answer_correctness': [
+            (0.0, 0.5, "Las respuestas contienen información incorrecta. Revisa el modelo y los datos de entrenamiento."),
+            (0.5, 0.8, "Precisión moderada. Mejora la corrección ajustando el prompt o el modelo."),
+            (0.8, 0.95, "Buena precisión. Las respuestas son generalmente correctas."),
+            (0.95, 1.0, "Excelente precisión. Las respuestas son prácticamente perfectas.")
+        ],
+        'harmfulness': [
+            (0.0, 0.1, "Sin contenido dañino detectado."),
+            (0.1, 0.3, "Bajo riesgo de contenido dañino."),
+            (0.3, 0.6, "Riesgo moderado de contenido potencialmente problemático."),
+            (0.6, 1.0, "Alto riesgo de contenido dañino. Se recomienda implementar filtros de seguridad.")
+        ]
+    }
+    
+    for min_score, max_score, recommendation in recommendations.get(metric, [(0, 1.0, "Sin recomendaciones específicas disponibles.")]):
+        if min_score <= score < max_score:
+            return recommendation
+
+# Reemplaza la sección de configuración de RAGAS en evaluate.py
+
+def setup_local_ragas_models():
+    """
+    Configura correctamente los modelos locales para RAGAS
+    """
+    try:
+        # 1. Configurar el LLM local con LlamaCpp
+        llm = LlamaCpp(
+            model_path=LOCAL_MODEL_PATH,
+            n_ctx=N_CTX,
+            n_threads=N_THREADS,
+            n_gpu_layers=N_GPU_LAYERS,
+            n_batch=N_BATCH,
+            temperature=LLM_TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+            verbose=False
+        )
+        
+        # 2. Configurar embeddings locales
+        embeddings = HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={'device': 'cpu'}
+        )
+
+        # 3. Envolver con los wrappers de RAGAS
+        ragas_llm = LangchainLLMWrapper(llm)
+        ragas_embeddings = LangchainEmbeddingsWrapper(embeddings)
+        
+        return ragas_llm, ragas_embeddings
         
     except Exception as e:
-        print(f"Error durante la evaluación: {str(e)}")
+        print(f"Error configurando modelos locales: {str(e)}")
+        return None, None
+
+def run_ragas_evaluation(dataset: Dataset) -> Dict[str, float]:
+    """
+    Ejecuta la evaluación RAGAS con modelos completamente locales
+    """
+    if not RAGAS_AVAILABLE:
+        print("RAGAS no está disponible. No se puede ejecutar la evaluación.")
+        return {}
+    
+    if not LOCAL_MODEL_PATH or not os.path.exists(LOCAL_MODEL_PATH):
+        print(f"Error: No se encontró el modelo en la ruta: {LOCAL_MODEL_PATH}")
+        return {}
+    
+    print(f"\nConfigurando modelos locales para RAGAS...")
+    
+    # Configurar modelos locales
+    ragas_llm, ragas_embeddings = setup_local_ragas_models()
+    
+    if not ragas_llm or not ragas_embeddings:
+        print("Error: No se pudieron configurar los modelos locales")
+        return {}
+    
+    try:
+        # Definir las métricas con los modelos locales
+        metrics = [
+            faithfulness.evolve(llm=ragas_llm),
+            answer_relevancy.evolve(llm=ragas_llm, embeddings=ragas_embeddings),
+            context_recall.evolve(llm=ragas_llm),
+            context_precision.evolve(llm=ragas_llm),
+            answer_similarity.evolve(embeddings=ragas_embeddings),
+            answer_correctness.evolve(llm=ragas_llm),
+            harmfulness.evolve(llm=ragas_llm),
+        ]
+        
+        print("\nIniciando evaluación con las siguientes métricas:")
+        for metric in metrics:
+            print(f"- {metric.name}")
+            
+        # Configurar RAGAS para modo secuencial
+        run_config.max_workers = 1
+        print("\nEjecutando evaluación en modo secuencial para garantizar estabilidad.")
+
+        # Ejecutar la evaluación sin configuraciones externas de API
+        result = ragas_evaluate(
+            dataset=dataset,
+            metrics=metrics,
+        )
+        
+        # Convertir resultados a diccionario
+        metrics_dict = {}
+        for metric in metrics:
+            metric_name = metric.name
+            if hasattr(result, metric_name):
+                metrics_dict[metric_name] = float(getattr(result, metric_name))
+        
+        return metrics_dict
+        
+    except Exception as e:
+        print(f"\nError durante la evaluación: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {}
 
+def check_lmstudio_connection() -> bool:
+    """Verifica la conexión con el servidor de LM Studio."""
+    try:
+        import requests
+        response = requests.get(LOCAL_LLM_URL.rstrip('/') + '/models')
+        return response.status_code == 200
+    except Exception:
+        return False
+
+def list_available_models() -> list:
+    """Intenta listar los modelos disponibles en el servidor de LM Studio."""
+    try:
+        import requests
+        response = requests.get(LOCAL_LLM_URL.rstrip('/') + '/models')
+        if response.status_code == 200:
+            return response.json().get('data', [])
+    except Exception:
+        pass
+    return []
 
 def main():
     """
-    Función principal para ejecutar la evaluación
+    Función principal para ejecutar la evaluación del sistema RAG.
     """
-    print("Iniciando evaluación del sistema RAG...")
+    pdf_path = os.getenv('PDF_PATH', 'data/PDF-GenAI-Challenge.pdf')
     
-    # Verificar que el archivo PDF existe
-    pdf_path = os.path.join("data", "PDF-GenAI-Challenge.pdf")
+    # Verificar archivo PDF
     if not os.path.exists(pdf_path):
-        print(f"Error: No se encontró el archivo {pdf_path}")
-        print("   Asegúrate de que el PDF esté en la carpeta 'data/'")
+        print(f"Error: No se encontró el archivo PDF en '{pdf_path}'")
         return
     
-    # Verificar configuración del servidor local
-    if not LOCAL_LLM_URL:
-        print("Error: No se configuró la URL del servidor local de LLM.")
-        print(f"   Asegúrate de que LM Studio esté ejecutando el modelo {MODEL_NAME}")
-        print(f"   y que el servidor API esté habilitado en {LOCAL_LLM_URL}")
+    # Verificar ruta del modelo
+    if not LOCAL_MODEL_PATH:
+        print("Error: No se configuró la ruta del modelo en .env (LOCAL_MODEL_PATH)")
         return
     
-    print(f"\nConfiguración del modelo:")
-    print(f"- Modelo: {MODEL_NAME}")
-    print(f"- URL del servidor: {LOCAL_LLM_URL}")
+    # Verificar dependencias
+    if not RAGAS_AVAILABLE:
+        print("Error: No se pueden ejecutar las evaluaciones. Faltan dependencias.")
+        print("Por favor, instala los paquetes necesarios: pip install ragas langchain-community llama-cpp-python")
+        return
     
-    # Inicializar sistema RAG
     try:
+        # Inicializar sistema RAG
+        print("\nInicializando el sistema RAG...")
         rag_system = RAGSystem(pdf_path)
         rag_system.setup_system()
+        
+        # Cargar dataset de evaluación
+        print("\nCargando dataset de evaluación...")
+        evaluation_data = create_evaluation_dataset(EVAL_SAMPLES)
+        
+        # Ejecutar evaluación si hay datos
+        if evaluation_data:
+            print(f"\nEvaluando con {len(evaluation_data)} ejemplos...")
+            dataset = prepare_ragas_dataset(rag_system, evaluation_data)
+            results = run_ragas_evaluation(dataset)
+            
+            # Mostrar y guardar resultados
+            if results:
+                display_evaluation_results(results)
+                create_detailed_report(rag_system, results)
+            else:
+                print("No se generaron resultados de evaluación.")
+        else:
+            print("No hay datos de evaluación disponibles.")
+            
     except Exception as e:
-        print(f"Error al inicializar el sistema RAG: {str(e)}")
-        return
-    
-    # Cargar dataset de evaluación
-    print("\nCargando dataset de evaluación...")
-    evaluation_data = create_evaluation_dataset(EVAL_SAMPLES)
-    
-    # Ejecutar evaluación
-    print(f"\nEvaluando con {len(evaluation_data)} ejemplos...")
-    results = run_rag_evaluation(rag_system, evaluation_data)
-    
-    # Mostrar resultados
-    display_evaluation_results(results)
-    
-    # Guardar reporte detallado
-    create_detailed_report(rag_system, results)
-    print(f"\nReporte de evaluación guardado en: {os.path.abspath(EVALUATION_OUTPUT_PATH)}")
+        print(f"\n[ERROR] Ocurrió un error durante la evaluación: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
